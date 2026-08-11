@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="SyncSketch — a real-time collaborative whiteboard. Draw, sketch, and collaborate in your browser." />
+  <title>SyncSketch — Collaborative Whiteboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ── Top toolbar ──────────────────────────────────────────── -->
+  <header id="toolbar" role="toolbar" aria-label="Drawing tools">
+
+    <!-- Brand -->
+    <div class="toolbar-brand">
+      <svg class="brand-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M12 2L2 7l10 5 10-5-10-5z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M2 17l10 5 10-5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+      </svg>
+      <span class="brand-name">SyncSketch</span>
+    </div>
+
+    <!-- Divider -->
+    <div class="toolbar-divider" aria-hidden="true"></div>
+
+    <!-- Tool group: pencil / eraser -->
+    <!-- just creating a pencil button with id tool-pencil so that it can be listened as an event when i click it -->
+    <div class="toolbar-group" role="group" aria-label="Drawing mode">
+      <button
+        id="tool-pencil"
+        class="tool-btn active"
+        title="Pencil (P)"
+        aria-pressed="true"
+        data-tool="pencil"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"
+                stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Pencil</span>
+      </button>
+
+      <button
+        id="tool-eraser"
+        class="tool-btn"
+        title="Eraser (E)"
+        aria-pressed="false"
+        data-tool="eraser"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M20 20H7L3 16l11-11 6 6-4 4" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M6.0001 17.0001L10 13" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span>Eraser</span>
+      </button>
+    </div>
+
+    <!-- Divider -->
+    <div class="toolbar-divider" aria-hidden="true"></div>
+
+    <!-- Tool group: color + size -->
+    <div class="toolbar-group" role="group" aria-label="Brush options">
+
+      <!-- Color picker -->
+      <label class="color-swatch-label" for="color-picker" title="Stroke color">
+        <span class="sr-only">Stroke color</span>
+        <span id="color-swatch" class="color-swatch" style="background:#1a1a2e;"></span>
+        <input type="color" id="color-picker" value="#1a1a2e" aria-label="Pick stroke color" />
+      </label>
+
+      <!-- Preset colors -->
+      <div class="color-presets" role="group" aria-label="Color presets">
+        <button class="preset-color" data-color="#1a1a2e" style="background:#1a1a2e;" title="Midnight" aria-label="Midnight"></button>
+        <button class="preset-color" data-color="#e63946" style="background:#e63946;" title="Red" aria-label="Red"></button>
+        <button class="preset-color" data-color="#f4a261" style="background:#f4a261;" title="Orange" aria-label="Orange"></button>
+        <button class="preset-color" data-color="#2a9d8f" style="background:#2a9d8f;" title="Teal" aria-label="Teal"></button>
+        <button class="preset-color" data-color="#457b9d" style="background:#457b9d;" title="Blue" aria-label="Blue"></button>
+        <button class="preset-color" data-color="#a8dadc" style="background:#a8dadc;" title="Light blue" aria-label="Light blue"></button>
+        <button class="preset-color" data-color="#ffffff" style="background:#ffffff;border-color:#c9c9c9;" title="White" aria-label="White"></button>
+      </div>
+
+      <!-- Divider -->
+      <div class="toolbar-divider" aria-hidden="true"></div>
+
+      <!-- Brush size -->
+      <div class="size-control" role="group" aria-label="Brush size">
+        <svg class="size-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" fill="currentColor"/>
+        </svg>
+        <input
+          type="range"
+          id="brush-size"
+          min="1"
+          max="60"
+          value="4"
+          aria-label="Brush size"
+          aria-valuemin="1"
+          aria-valuemax="60"
+          aria-valuenow="4"
+        />
+        <span id="brush-size-label" class="size-value">4px</span>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="toolbar-divider" aria-hidden="true"></div>
+
+    <!-- Actions -->
+    <div class="toolbar-group" role="group" aria-label="Actions">
+      <button id="btn-undo" class="action-btn" title="Undo (Ctrl+Z)" aria-label="Undo">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M3 7v6h6" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M3 13a9 9 0 1 0 2.63-6.36L3 7" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Undo</span>
+      </button>
+
+      <button id="btn-clear" class="action-btn action-btn--danger" title="Clear canvas" aria-label="Clear canvas">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M10 11v6M14 11v6" stroke="currentColor" stroke-width="1.8"
+                stroke-linecap="round"/>
+          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor"
+                stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Clear</span>
+      </button>
+    </div>
+
+  </header>
+
+  <!-- ── Canvas area ───────────────────────────────────────────── -->
+  <main id="canvas-container" aria-label="Whiteboard canvas">
+    <canvas id="whiteboard" aria-label="Drawing canvas"></canvas>
+  </main>
+
+  <!-- ── Status bar ────────────────────────────────────────────── -->
+  <footer id="status-bar" aria-live="polite">
+    <span id="status-tool">Pencil</span>
+    <span class="status-sep">·</span>
+    <span id="status-size">4px</span>
+    <span class="status-sep">·</span>
+    <span id="status-strokes">0 strokes</span>
+    <span class="status-sep">·</span>
+    <span id="status-coords">x: 0, y: 0</span>
+  </footer>
+
+  <!-- ── Clear confirm modal ───────────────────────────────────── -->
+  <div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true"
+       aria-labelledby="modal-title" hidden>
+    <div class="modal">
+      <h2 id="modal-title" class="modal-title">Clear the canvas?</h2>
+      <p class="modal-body">This will erase all strokes. This action cannot be undone.</p>
+      <div class="modal-actions">
+        <button id="modal-cancel" class="modal-btn modal-btn--secondary">Cancel</button>
+        <button id="modal-confirm" class="modal-btn modal-btn--danger">Clear</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,440 @@
+/* ═══════════════════════════════════════════════════════════════════
+   SyncSketch — style.css
+   Design tokens → reset → layout → toolbar → canvas → status bar
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Design tokens ───────────────────────────────────────────── */
+:root {
+  /* Palette */
+  --bg-canvas:        #f8f7f4;          /* off-white drawing surface  */
+  --bg-toolbar:       #ffffff;
+  --bg-toolbar-hover: #f3f2ef;
+  --bg-modal:         rgba(0, 0, 0, 0.45);
+
+  --accent:           #6c63ff;          /* primary action colour       */
+  --accent-dark:      #574fd6;
+  --danger:           #e63946;
+  --danger-dark:      #c62d39;
+
+  --text-primary:     #1a1a2e;
+  --text-secondary:   #6b7280;
+  --text-muted:       #9ca3af;
+
+  --border:           #e5e7eb;
+  --border-strong:    #d1d5db;
+  --shadow-sm:        0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+  --shadow-md:        0 4px 16px rgba(0,0,0,.12);
+  --shadow-lg:        0 20px 60px rgba(0,0,0,.20);
+
+  --radius-sm:        6px;
+  --radius-md:        10px;
+  --radius-full:      9999px;
+
+  --toolbar-h:        58px;
+  --statusbar-h:      28px;
+
+  --transition:       180ms ease;
+  --font:             'Inter', system-ui, sans-serif;
+}
+
+/* ── 2. Reset ───────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;           /* prevent scrollbars — canvas fills viewport */
+  font-family: var(--font);
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+}
+
+input[type="range"] {
+  cursor: pointer;
+}
+
+/* Screen-reader-only utility */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ── 3. Top toolbar ─────────────────────────────────────────────── */
+#toolbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--toolbar-h);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  z-index: 100;
+  user-select: none;
+}
+
+/* Brand */
+.toolbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.brand-icon {
+  width: 22px; height: 22px;
+  color: var(--accent);
+}
+
+.brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+  color: var(--text-primary);
+}
+
+/* Dividers */
+.toolbar-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--border);
+  margin: 0 8px;
+  flex-shrink: 0;
+}
+
+/* Tool groups */
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* ── Tool buttons ───────────────────────────────────────────────── */
+.tool-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background var(--transition), color var(--transition);
+}
+
+.tool-btn svg {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+}
+
+.tool-btn:hover {
+  background: var(--bg-toolbar-hover);
+  color: var(--text-primary);
+}
+
+.tool-btn.active {
+  background: #eeecfd;
+  color: var(--accent);
+}
+
+/* ── Action buttons ─────────────────────────────────────────────── */
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: background var(--transition), color var(--transition);
+}
+
+.action-btn svg {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+}
+
+.action-btn:hover {
+  background: var(--bg-toolbar-hover);
+  color: var(--text-primary);
+}
+
+.action-btn--danger:hover {
+  background: #fef0f0;
+  color: var(--danger);
+}
+
+/* ── Color swatch / picker ──────────────────────────────────────── */
+.color-swatch-label {
+  position: relative;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.color-swatch {
+  display: block;
+  width: 26px; height: 26px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--border-strong);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.color-swatch-label:hover .color-swatch {
+  transform: scale(1.1);
+  box-shadow: var(--shadow-md);
+}
+
+/* Hide the native color input visually; keep it accessible */
+input[type="color"] {
+  position: absolute;
+  opacity: 0;
+  width: 100%; height: 100%;
+  top: 0; left: 0;
+  cursor: pointer;
+}
+
+/* ── Preset color dots ──────────────────────────────────────────── */
+.color-presets {
+  display: flex;
+  gap: 5px;
+}
+
+.preset-color {
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: transform var(--transition), border-color var(--transition);
+}
+
+.preset-color:hover {
+  transform: scale(1.25);
+  border-color: var(--border-strong);
+}
+
+.preset-color.selected {
+  border-color: var(--accent);
+  transform: scale(1.2);
+}
+
+/* ── Brush size control ─────────────────────────────────────────── */
+.size-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.size-icon {
+  width: 14px; height: 14px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100px;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-strong);
+  outline: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: transform var(--transition);
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+  transform: scale(1.2);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #fff;
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+}
+
+.size-value {
+  min-width: 32px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+/* ── 4. Canvas container ────────────────────────────────────────── */
+#canvas-container {
+  position: fixed;
+  top: var(--toolbar-h);
+  left: 0;
+  right: 0;
+  bottom: var(--statusbar-h);
+  overflow: hidden;
+  background: var(--bg-canvas);
+}
+
+#whiteboard {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Cursor changes are applied via JS */
+}
+
+/* Cursor styles applied by JS */
+body.tool-pencil  #whiteboard { cursor: crosshair; }
+body.tool-eraser  #whiteboard { cursor: cell; }
+
+/* ── 5. Status bar ──────────────────────────────────────────────── */
+#status-bar {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--statusbar-h);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  background: var(--bg-toolbar);
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.status-sep { opacity: 0.4; }
+
+#status-tool   { color: var(--accent); font-weight: 600; }
+#status-strokes { font-variant-numeric: tabular-nums; }
+#status-coords  { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* ── 6. Modal ───────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 120ms ease;
+}
+
+.modal-overlay[hidden] { display: none; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.modal {
+  background: #fff;
+  border-radius: var(--radius-md);
+  padding: 28px 32px;
+  box-shadow: var(--shadow-lg);
+  max-width: 360px;
+  width: 90%;
+  animation: slideUp 180ms ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(12px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+
+.modal-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modal-btn {
+  padding: 8px 18px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background var(--transition), transform var(--transition);
+}
+
+.modal-btn:active { transform: scale(0.97); }
+
+.modal-btn--secondary {
+  color: var(--text-secondary);
+  background: var(--bg-toolbar-hover);
+  border: 1px solid var(--border);
+}
+
+.modal-btn--secondary:hover {
+  background: var(--border);
+}
+
+.modal-btn--danger {
+  color: #fff;
+  background: var(--danger);
+}
+
+.modal-btn--danger:hover {
+  background: var(--danger-dark);
+}
+
+/* ── 7. Cursor preview circle (injected by JS) ──────────────────── */
+#cursor-ring {
+  position: fixed;
+  pointer-events: none;
+  border-radius: 50%;
+  border: 2px solid rgba(0,0,0,.35);
+  transform: translate(-50%, -50%);
+  transition: width 80ms ease, height 80ms ease;
+  z-index: 150;
+}
+
+/* ── 8. Misc animation utilities ────────────────────────────────── */
+@keyframes popIn {
+  0%   { transform: scale(0.85); opacity: 0; }
+  70%  { transform: scale(1.05); }
+  100% { transform: scale(1);    opacity: 1; }
+}
