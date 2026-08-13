@@ -62,15 +62,29 @@ function generateId() {
 const canvas  = /** @type {HTMLCanvasElement} */ (document.getElementById('whiteboard'));
 const ctx     = canvas.getContext('2d');
 
+// Overlay canvas — remote users' live in-progress strokes are drawn here.
+// It sits on top of #whiteboard but pointer-events: none (see CSS).
+const overlay    = /** @type {HTMLCanvasElement} */ (document.getElementById('overlay'));
+const overlayCtx = overlay.getContext('2d');
+
 /**
- * Resize the canvas backing store to match its CSS display size.
+ * Map of remote in-progress strokes: strokeId → StrokeElement.
+ * Populated by stroke_progress messages, cleared when the full stroke arrives.
+ */
+const remoteProgress = new Map();
+
+/**
+ * Resize both canvases and re-render.
  * Must be called on load and every time the window resizes.
  */
 function resizeCanvas() {
   const container = canvas.parentElement;
-  canvas.width  = container.clientWidth;
-  canvas.height = container.clientHeight;
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  canvas.width  = w;  canvas.height  = h;
+  overlay.width = w;  overlay.height = h;
   renderAllStrokes();
+  renderAllRemoteProgress();
 }
 
 /**
@@ -83,37 +97,11 @@ function renderAllStrokes() {
 }
 
 /**
- * Render a single StrokeElement.
+ * Render a single StrokeElement onto the MAIN canvas.
  * @param {StrokeElement} stroke
  */
 function renderStroke(stroke) {
-  const pts = stroke.points;
-  if (pts.length === 0) return;
-
-  ctx.save();
-  applyStrokeStyle(ctx, stroke);
-
-  ctx.beginPath();
-
-  if (pts.length === 1) {
-    // Single tap → draw a dot
-    ctx.arc(pts[0].x, pts[0].y, stroke.size / 2, 0, Math.PI * 2);
-    ctx.fill();
-  } else {
-    // Smooth curve through points using quadratic bezier
-    ctx.moveTo(pts[0].x, pts[0].y);
-    for (let i = 1; i < pts.length - 1; i++) {
-      const mx = (pts[i].x + pts[i + 1].x) / 2;
-      const my = (pts[i].y + pts[i + 1].y) / 2;
-      ctx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
-    }
-    // Draw to the last point
-    const last = pts[pts.length - 1];
-    ctx.lineTo(last.x, last.y);
-    ctx.stroke();
-  }
-
-  ctx.restore();
+  renderStrokeOnCtx(ctx, stroke);
 }
 
 /**
@@ -160,10 +148,58 @@ function applyStrokeStyle(ctx, stroke) {
   ctx.lineJoin    = 'round';
 }
 
+/**
+ * Render all remote in-progress strokes onto the overlay canvas from scratch.
+ * Called after resize and when a remote stroke is removed from the map.
+ */
+function renderAllRemoteProgress() {
+  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+  remoteProgress.forEach(stroke => renderStrokeOnCtx(overlayCtx, stroke));
+}
+
+/**
+ * Render a single StrokeElement onto any given context.
+ * Shared by main canvas (committed) and overlay (live remote) rendering.
+ * @param {CanvasRenderingContext2D} targetCtx
+ * @param {StrokeElement} stroke
+ */
+function renderStrokeOnCtx(targetCtx, stroke) {
+  const pts = stroke.points;
+  if (pts.length === 0) return;
+
+  targetCtx.save();
+  applyStrokeStyle(targetCtx, stroke);
+  targetCtx.beginPath();
+
+  if (pts.length === 1) {
+    targetCtx.arc(pts[0].x, pts[0].y, stroke.size / 2, 0, Math.PI * 2);
+    targetCtx.fill();
+  } else {
+    targetCtx.moveTo(pts[0].x, pts[0].y);
+    for (let i = 1; i < pts.length - 1; i++) {
+      const mx = (pts[i].x + pts[i + 1].x) / 2;
+      const my = (pts[i].y + pts[i + 1].y) / 2;
+      targetCtx.quadraticCurveTo(pts[i].x, pts[i].y, mx, my);
+    }
+    const last = pts[pts.length - 1];
+    targetCtx.lineTo(last.x, last.y);
+    targetCtx.stroke();
+  }
+
+  targetCtx.restore();
+}
 
 /* ═══════════════════════════════════════════════════════════════════
    [C] UI LAYER
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── DOM refs for new WS elements ─────────────────────────────── */
+// (declared here so they are available to both [C] and [D] sections)
+const elRoomIdDisplay = document.getElementById('room-id-display');
+const elWsDot         = document.getElementById('ws-dot');
+const elUserCount     = document.getElementById('user-count');
+const elStatusWs      = document.getElementById('status-ws');
+const elBtnCopyLink   = document.getElementById('btn-copy-link');
 
 /* ── Tool state ─────────────────────────────────────────────────── */
 const state = {
@@ -241,6 +277,10 @@ canvas.addEventListener('mousedown', (e) => {
   addPoint(state.current, pos.x, pos.y);
 });
 
+/* ── Throttle helper for stroke_progress ────────────────────────── */
+let _lastProgressSend = 0;
+const PROGRESS_INTERVAL_MS = 50;   // send at most 20 fps to server
+
 canvas.addEventListener('mousemove', (e) => {
   const pos = getCanvasPos(e);
 
@@ -254,6 +294,19 @@ canvas.addEventListener('mousemove', (e) => {
 
   addPoint(state.current, pos.x, pos.y);
   renderLiveSegment(state.current);
+
+  // Stream the latest point to all peers (throttled)
+  const now = Date.now();
+  if (now - _lastProgressSend >= PROGRESS_INTERVAL_MS) {
+    _lastProgressSend = now;
+    wsSend('stroke_progress', {
+      id:    state.current.id,
+      tool:  state.current.tool,
+      color: state.current.color,
+      size:  state.current.size,
+      point: pos,
+    });
+  }
 });
 
 canvas.addEventListener('mouseup', (e) => {
@@ -268,20 +321,18 @@ canvas.addEventListener('mouseup', (e) => {
     renderStroke(state.current);
   }
 
-  commitStroke(state.current);
+  // Capture reference before clearing state
+  const finishedStroke = state.current;
+  commitStroke(finishedStroke);
   state.isDrawing = false;
   state.current   = null;
 
   updateStrokeCount();
 
-  /*
-   * PHASE 2 HOOK — when WebSockets are added, send the completed stroke here:
-   *
-   *   ws.send(JSON.stringify({ type: 'stroke', payload: stroke }));
-   *
-   * The payload is already a clean, serialisable plain object.
-   */
+  // Send the completed stroke to all peers
+  wsSend('stroke', { stroke: finishedStroke });
 });
+
 
 // If the mouse leaves the canvas mid-stroke, finish the stroke
 canvas.addEventListener('mouseleave', (e) => {
@@ -356,13 +407,9 @@ elBtnUndo.addEventListener('click', undoLast);
 function undoLast() {
   const removed = popStroke();
   if (!removed) return;
-  renderAllStrokes();       // repaint canvas from updated strokes[]
+  renderAllStrokes();
   updateStrokeCount();
-
-  /*
-   * PHASE 2 HOOK — broadcast undo:
-   *   ws.send(JSON.stringify({ type: 'undo', payload: { id: removed.id } }));
-   */
+  wsSend('undo', { id: removed.id });
 }
 
 /* ── Clear canvas ───────────────────────────────────────────────── */
@@ -376,11 +423,7 @@ elModalConfirm.addEventListener('click', () => {
   renderAllStrokes();
   updateStrokeCount();
   hideModal();
-
-  /*
-   * PHASE 2 HOOK — broadcast clear:
-   *   ws.send(JSON.stringify({ type: 'clear' }));
-   */
+  wsSend('clear', {});
 });
 
 elModalOverlay.addEventListener('click', (e) => {
@@ -420,21 +463,228 @@ document.addEventListener('keydown', (e) => {
 /* ── Window resize ──────────────────────────────────────────────── */
 window.addEventListener('resize', resizeCanvas);
 
+
+/* ═══════════════════════════════════════════════════════════════════
+   [D] WEBSOCKET CLIENT
+   ═══════════════════════════════════════════════════════════════════
+
+   Responsibilities:
+   • Read/generate the room ID from the URL query string
+   • Connect to  ws://localhost:8000/ws/<room_id>
+   • Handle inbound messages: init | stroke | undo | clear | user_count
+   • Expose wsSend() for the UI layer to call
+   • Auto-reconnect with exponential back-off
+   ═══════════════════════════════════════════════════════════════════ */
+
+const WS_URL = 'ws://localhost:8000';
+
+/* ── Room ID ─────────────────────────────────────────────────────── */
+
+/**
+ * Read ?room=<id> from the URL, or generate a new short id and write
+ * it back into the address bar so the URL is shareable immediately.
+ */
+function getRoomId() {
+  const params = new URLSearchParams(window.location.search);
+  let id = params.get('room');
+  if (!id) {
+    id = Math.random().toString(36).slice(2, 8);   // e.g. 'k3z9ab'
+    params.set('room', id);
+    // Replace current history entry so Back button still works
+    window.history.replaceState({}, '', `?${params.toString()}`);
+  }
+  return id;
+}
+
+const ROOM_ID = getRoomId();
+elRoomIdDisplay.textContent = ROOM_ID;
+
+/* ── WS state ────────────────────────────────────────────────────── */
+let _ws           = null;   // active WebSocket instance
+let _reconnectMs  = 1000;   // current back-off delay
+const MAX_BACKOFF = 16000;  // cap at 16 s
+
+/** Update all connection-status UI in one place. */
+function setWsStatus(status) {
+  // status: 'connecting' | 'connected' | 'disconnected'
+  const labels = { connecting: 'Connecting…', connected: 'Live', disconnected: 'Offline' };
+
+  elWsDot.className    = `room-dot ${status}`;
+  elStatusWs.className = status;
+  elStatusWs.textContent = labels[status] ?? status;
+}
+
+/** Send a typed message if the socket is open. Silently drops if not. */
+function wsSend(type, payload) {
+  if (_ws && _ws.readyState === WebSocket.OPEN) {
+    _ws.send(JSON.stringify({ type, payload }));
+  }
+}
+
+/** Open a WebSocket connection to the room and set up all handlers. */
+function wsConnect() {
+  setWsStatus('connecting');
+
+  const url = `${WS_URL}/ws/${ROOM_ID}`;
+  _ws = new WebSocket(url);
+
+  // ── Open ─────────────────────────────────────────────────────────
+  _ws.addEventListener('open', () => {
+    setWsStatus('connected');
+    _reconnectMs = 1000;   // reset back-off on successful connect
+    console.info(`[WS] Connected to room "${ROOM_ID}"`);
+  });
+
+  // ── Message ───────────────────────────────────────────────────────
+  _ws.addEventListener('message', (event) => {
+    let msg;
+    try {
+      msg = JSON.parse(event.data);
+    } catch {
+      console.warn('[WS] Non-JSON message received:', event.data);
+      return;
+    }
+
+    const { type, payload } = msg;
+
+    switch (type) {
+
+      // Full canvas state on join — replay all strokes from server
+      case 'init': {
+        clearStrokes();
+        (payload.strokes ?? []).forEach(s => commitStroke(s));
+        renderAllStrokes();
+        updateStrokeCount();
+        // Clear any orphaned remote progress (e.g. reconnect mid-session)
+        remoteProgress.clear();
+        renderAllRemoteProgress();
+        break;
+      }
+
+      // Live point from a peer who is still drawing — render on overlay
+      case 'stroke_progress': {
+        const { id, tool, color, size, point } = payload;
+        if (!id || !point) break;
+
+        // Get or create the in-progress stroke object for this peer
+        if (!remoteProgress.has(id)) {
+          remoteProgress.set(id, { id, tool, color, size, points: [] });
+        }
+        const liveStroke = remoteProgress.get(id);
+        const pts = liveStroke.points;
+        pts.push(point);
+
+        // Draw only the new segment (fast, incremental) on the overlay
+        if (pts.length >= 2) {
+          overlayCtx.save();
+          applyStrokeStyle(overlayCtx, liveStroke);
+          const p1 = pts[pts.length - 2];
+          const p2 = pts[pts.length - 1];
+          overlayCtx.beginPath();
+          overlayCtx.moveTo(p1.x, p1.y);
+          overlayCtx.lineTo(p2.x, p2.y);
+          overlayCtx.stroke();
+          overlayCtx.restore();
+        }
+        break;
+      }
+
+      // Another user finished a stroke — move from overlay to main canvas
+      case 'stroke': {
+        const stroke = payload.stroke;
+        // Remove from overlay (if it was streamed live)
+        remoteProgress.delete(stroke.id);
+        renderAllRemoteProgress();   // clear that ghost from overlay
+        // Commit to main canvas
+        commitStroke(stroke);
+        renderStroke(stroke);
+        updateStrokeCount();
+        break;
+      }
+
+      // Another user undid — remove by id and repaint
+      case 'undo': {
+        remoteProgress.delete(payload.id);   // clean overlay too if mid-stroke
+        renderAllRemoteProgress();
+        const idx = strokes.findIndex(s => s.id === payload.id);
+        if (idx !== -1) {
+          strokes.splice(idx, 1);
+          renderAllStrokes();
+          updateStrokeCount();
+        }
+        break;
+      }
+
+      // Another user cleared — wipe everything including overlay
+      case 'clear': {
+        clearStrokes();
+        renderAllStrokes();
+        remoteProgress.clear();
+        renderAllRemoteProgress();
+        updateStrokeCount();
+        break;
+      }
+
+      // Server reports how many users are in the room
+      case 'user_count': {
+        elUserCount.textContent = payload.count ?? '?';
+        break;
+      }
+
+      case 'error': {
+        console.error('[WS] Server error:', payload.message);
+        break;
+      }
+
+      default:
+        console.warn('[WS] Unknown message type:', type);
+    }
+  });
+
+
+  // ── Close / Error ─────────────────────────────────────────────────
+  _ws.addEventListener('close', () => {
+    setWsStatus('disconnected');
+    console.warn(`[WS] Disconnected. Retrying in ${_reconnectMs / 1000}s…`);
+    setTimeout(() => {
+      _reconnectMs = Math.min(_reconnectMs * 2, MAX_BACKOFF);
+      wsConnect();
+    }, _reconnectMs);
+  });
+
+  _ws.addEventListener('error', () => {
+    // 'error' is always followed by 'close', so we handle reconnect there
+    setWsStatus('disconnected');
+  });
+}
+
+/* ── Copy invite link ────────────────────────────────────────────── */
+elBtnCopyLink.addEventListener('click', async () => {
+  const url = window.location.href;
+  try {
+    await navigator.clipboard.writeText(url);
+    elBtnCopyLink.title = 'Copied!';
+    setTimeout(() => { elBtnCopyLink.title = 'Copy invite link'; }, 2000);
+  } catch {
+    // Fallback for browsers that block clipboard without HTTPS
+    prompt('Copy this link to invite others:', url);
+  }
+});
+
+
 /* ── Initialise ─────────────────────────────────────────────────── */
 (function init() {
-  // Set initial cursor class
   document.body.classList.add('tool-pencil');
-
-  // Size canvas to fill its container
   resizeCanvas();
 
-  // Sync UI to initial state values
   elColorSwatch.style.background = state.color;
   elBrushLabel.textContent       = `${state.size}px`;
   elStatusTool.textContent       = 'Pencil';
   elStatusSize.textContent       = `${state.size}px`;
   updateStrokeCount();
 
-  // Mark the first preset as selected (matches default color)
   if (elPresets[0]) elPresets[0].classList.add('selected');
+
+  // Start WebSocket connection
+  wsConnect();
 })();

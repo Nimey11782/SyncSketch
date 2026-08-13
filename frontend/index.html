@@ -28,6 +28,22 @@
     <!-- Divider -->
     <div class="toolbar-divider" aria-hidden="true"></div>
 
+    <!-- Room pill -->
+    <div class="room-pill" id="room-pill" title="Current room">
+      <span class="room-dot" id="ws-dot" aria-label="Connection status"></span>
+      <span class="room-label">Room:</span>
+      <span class="room-id" id="room-id-display">—</span>
+      <button class="room-copy-btn" id="btn-copy-link" title="Copy invite link" aria-label="Copy invite link">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.8"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.8"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Divider -->
+    <div class="toolbar-divider" aria-hidden="true"></div>
+
     <!-- Tool group: pencil / eraser -->
     <!-- just creating a pencil button with id tool-pencil so that it can be listened as an event when i click it -->
     <div class="toolbar-group" role="group" aria-label="Drawing mode">
@@ -113,6 +129,20 @@
     <!-- Divider -->
     <div class="toolbar-divider" aria-hidden="true"></div>
 
+    <!-- Users online counter -->
+    <div class="users-counter" id="users-counter" title="Users in this room" aria-label="Users online">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.8"/>
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <span id="user-count">1</span>
+    </div>
+
+    <!-- Divider -->
+    <div class="toolbar-divider" aria-hidden="true"></div>
+
     <!-- Actions -->
     <div class="toolbar-group" role="group" aria-label="Actions">
       <button id="btn-undo" class="action-btn" title="Undo (Ctrl+Z)" aria-label="Undo">
@@ -145,6 +175,8 @@
   <!-- ── Canvas area ───────────────────────────────────────────── -->
   <main id="canvas-container" aria-label="Whiteboard canvas">
     <canvas id="whiteboard" aria-label="Drawing canvas"></canvas>
+    <!-- Overlay for remote users' live in-progress strokes (pointer-events: none) -->
+    <canvas id="overlay" aria-hidden="true"></canvas>
   </main>
 
   <!-- ── Status bar ────────────────────────────────────────────── -->
@@ -154,6 +186,8 @@
     <span id="status-size">4px</span>
     <span class="status-sep">·</span>
     <span id="status-strokes">0 strokes</span>
+    <span class="status-sep">·</span>
+    <span id="status-ws">Connecting…</span>
     <span class="status-sep">·</span>
     <span id="status-coords">x: 0, y: 0</span>
   </footer>

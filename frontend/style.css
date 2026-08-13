@@ -315,6 +315,15 @@ input[type="range"]::-moz-range-thumb {
 body.tool-pencil  #whiteboard { cursor: crosshair; }
 body.tool-eraser  #whiteboard { cursor: cell; }
 
+/* Overlay canvas — sits on top, invisible to mouse events */
+#overlay {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;   /* all mouse events pass through to #whiteboard */
+}
+
+
 /* ── 5. Status bar ──────────────────────────────────────────────── */
 #status-bar {
   position: fixed;
@@ -438,3 +447,98 @@ body.tool-eraser  #whiteboard { cursor: cell; }
   70%  { transform: scale(1.05); }
   100% { transform: scale(1);    opacity: 1; }
 }
+
+/* ── 9. Room pill ───────────────────────────────────────────────── */
+.room-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: #f3f2ef;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.room-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.room-id {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+  max-width: 72px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.room-copy-btn {
+  display: flex;
+  align-items: center;
+  color: var(--text-muted);
+  padding: 2px;
+  border-radius: 4px;
+  transition: color var(--transition), background var(--transition);
+}
+
+.room-copy-btn svg {
+  width: 13px; height: 13px;
+}
+
+.room-copy-btn:hover {
+  color: var(--accent);
+  background: #eeecfd;
+}
+
+/* WS status dot */
+.room-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--text-muted);       /* grey = not yet connected    */
+  flex-shrink: 0;
+  transition: background var(--transition);
+}
+
+.room-dot.connected    { background: #22c55e; }   /* green  */
+.room-dot.disconnected { background: var(--danger); }  /* red    */
+.room-dot.connecting   { background: #f4a261; animation: pulse 1.2s infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.35; }
+}
+
+/* ── 10. Users counter ──────────────────────────────────────────── */
+.users-counter {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.users-counter svg {
+  width: 15px; height: 15px;
+  flex-shrink: 0;
+}
+
+#user-count {
+  min-width: 14px;
+  text-align: center;
+}
+
+/* ── 11. WS status in status bar ────────────────────────────────── */
+#status-ws {
+  font-weight: 600;
+}
+
+#status-ws.connected    { color: #22c55e; }
+#status-ws.disconnected { color: var(--danger); }
+#status-ws.connecting   { color: #f4a261; }
+
