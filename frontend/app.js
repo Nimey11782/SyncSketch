@@ -476,7 +476,9 @@ window.addEventListener('resize', resizeCanvas);
    • Auto-reconnect with exponential back-off
    ═══════════════════════════════════════════════════════════════════ */
 
-const WS_URL = 'ws://localhost:8000';
+// Use the same host/port as the frontend, assuming an Nginx reverse proxy routes /ws to the backend.
+const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${protocol}//${window.location.host}`;
 
 /* ── Room ID ─────────────────────────────────────────────────────── */
 

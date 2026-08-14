@@ -17,7 +17,7 @@ from typing import Any
 
 from fastapi import WebSocket
 
-from database import load_strokes
+from db import load_strokes
 
 log = logging.getLogger("syncsketch")
 

@@ -33,7 +33,7 @@ from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from database import clear_room, delete_stroke, save_stroke
+from db import clear_room, delete_stroke, save_stroke
 from rooms import manager
 
 log = logging.getLogger("syncsketch")

@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     syncsketch
+      POSTGRES_PASSWORD: syncsketch
+      POSTGRES_DB:       syncsketch
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://syncsketch:syncsketch@db:5432/syncsketch
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

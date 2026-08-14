@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import create_tables, engine
+from db import create_tables, engine
 from rooms import manager
 from ws import router as ws_router
 
