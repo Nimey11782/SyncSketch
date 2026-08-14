@@ -476,9 +476,8 @@ window.addEventListener('resize', resizeCanvas);
    • Auto-reconnect with exponential back-off
    ═══════════════════════════════════════════════════════════════════ */
 
-// Use the same host/port as the frontend, assuming an Nginx reverse proxy routes /ws to the backend.
-const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-const WS_URL = `${protocol}//${window.location.host}`;
+// Point directly to the deployed Render Backend Web Service
+const WS_URL = 'wss://syncsketch-17qk.onrender.com';
 
 /* ── Room ID ─────────────────────────────────────────────────────── */
 
