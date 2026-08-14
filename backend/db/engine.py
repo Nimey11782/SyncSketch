@@ -21,6 +21,13 @@ load_dotenv()
 
 DATABASE_URL: str = os.environ["DATABASE_URL"]   # fail fast if not configured
 
+# Render/Heroku provide URLs starting with postgres:// or postgresql://
+# Our async driver needs postgresql+asyncpg://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
+elif DATABASE_URL.startswith("postgresql://"):
+    DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+
 # pool_pre_ping=True re-validates stale connections before use
 engine = create_async_engine(DATABASE_URL, echo=False, pool_pre_ping=True)
 
